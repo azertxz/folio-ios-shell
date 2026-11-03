@@ -22,6 +22,20 @@ final class FolioModel: ObservableObject {
     private var assets: URL { base.appendingPathComponent("public") }
 
     init() {
+        #if DEBUG
+        // Simulator UI tests use synthetic HTML in an isolated temporary root.
+        // This path is absent from release builds and never touches study data.
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           let html = ProcessInfo.processInfo.environment["FOLIO_UI_TEST_HTML"] {
+            do {
+                let fixture = manager.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+                try manager.createDirectory(at: fixture, withIntermediateDirectories: true)
+                try Data(html.utf8).write(to: fixture.appendingPathComponent("index.html"))
+                start(URL(string: "https://ui-test.ts.net")!, root: fixture)
+            } catch { status = error.localizedDescription }
+            return
+        }
+        #endif
         if let origin = validatedOrigin(address), manager.fileExists(atPath: assets.appendingPathComponent("index.html").path) {
             start(origin)
         } else {
@@ -37,9 +51,9 @@ final class FolioModel: ObservableObject {
         return URL(string: "https://" + host)
     }
 
-    private func start(_ origin: URL) {
+    private func start(_ origin: URL, root: URL? = nil) {
         server?.stop()
-        let instance = LocalServer(root: assets, origin: origin)
+        let instance = LocalServer(root: root ?? assets, origin: origin)
         server = instance
         do {
             try instance.start { [weak self] running, error in

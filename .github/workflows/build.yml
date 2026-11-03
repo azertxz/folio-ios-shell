@@ -9,6 +9,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Test native dialogs and edge-to-edge layout on iPhone simulator
+        run: bash test-ios.sh
       - name: Build device IPA without Apple credentials
         run: bash build-ios.sh
       - uses: actions/upload-artifact@v4
@@ -17,3 +19,11 @@ jobs:
           path: build/Folio-unsigned.ipa
           retention-days: 3
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Folio-UI-tests
+          path: |
+            build/Folio-UI-tests.xcresult
+            build/ui-test-attachments
+          retention-days: 3
