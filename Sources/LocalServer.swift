@@ -9,6 +9,12 @@ final class LocalServer {
     private let origin: URL
     private let session: URLSession
     static let address = URL(string: "http://localhost:8765/")!
+    static let localToken: String = {
+        if let token = UserDefaults.standard.string(forKey: "folioLocalToken") { return token }
+        let token = UUID().uuidString + UUID().uuidString
+        UserDefaults.standard.set(token, forKey: "folioLocalToken")
+        return token
+    }()
 
     init(root: URL, origin: URL) {
         self.root = root.standardizedFileURL
@@ -61,6 +67,12 @@ final class LocalServer {
                 if let colon = line.firstIndex(of: ":") {
                     headers[String(line[..<colon]).lowercased()] = String(line[line.index(after: colon)...]).trimmingCharacters(in: .whitespaces)
                 }
+            }
+            let cookies = (headers["cookie"] ?? "").components(separatedBy: ";").map {
+                $0.trimmingCharacters(in: .whitespaces)
+            }
+            guard cookies.contains("folio_local_token=" + Self.localToken) else {
+                self.reply(connection, status: 403, body: Data()); return
             }
             guard headers["transfer-encoding"] == nil else { self.reply(connection, status: 501, body: Data()); return }
             let length = Int(headers["content-length"] ?? "0") ?? -1

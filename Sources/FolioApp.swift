@@ -59,7 +59,12 @@ struct StudyWebView: UIViewRepresentable {
         view.isOpaque = false
         view.backgroundColor = UIColor(red: 0.08, green: 0.13, blue: 0.11, alpha: 1)
         view.scrollView.contentInsetAdjustmentBehavior = .never
-        view.load(URLRequest(url: LocalServer.address))
+        let cookie = HTTPCookie(properties: [.domain: "localhost", .path: "/",
+            .name: "folio_local_token", .value: LocalServer.localToken,
+            HTTPCookiePropertyKey("HttpOnly"): "TRUE"])!
+        configuration.websiteDataStore.httpCookieStore.setCookie(cookie) {
+            view.load(URLRequest(url: LocalServer.address))
+        }
         return view
     }
     func updateUIView(_ view: WKWebView, context: Context) {}
