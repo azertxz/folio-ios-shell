@@ -1,0 +1,28 @@
+name: Folio
+options:
+  bundleIdPrefix: app.folio
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+targets:
+  Folio:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+      - Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.folio.revision
+        PRODUCT_NAME: Folio
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGNING_ALLOWED: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ENABLE_USER_SCRIPT_SANDBOXING: YES
+schemes:
+  Folio:
+    build:
+      targets:
+        Folio: all

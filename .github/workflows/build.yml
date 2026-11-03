@@ -1,0 +1,19 @@
+name: Build Folio IPA
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build device IPA without Apple credentials
+        run: bash build-ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Folio-IPA
+          path: build/Folio-unsigned.ipa
+          retention-days: 3
+          if-no-files-found: error
