@@ -62,6 +62,15 @@ final class FolioUITests: XCTestCase {
     func testWebViewFillsBottomAndNavigationAvoidsHomeIndicator() {
         for orientation in [UIDeviceOrientation.portrait, .landscapeLeft] {
             XCUIDevice.shared.orientation = orientation
+            // The old portrait geometry can still satisfy the bottom-edge
+            // assertion while a rotation is starting. Wait for the new bounds.
+            let landscape = orientation == .landscapeLeft
+            let rotated = NSPredicate { _, _ in
+                let bounds = self.app.windows.firstMatch.frame
+                return landscape ? bounds.width > bounds.height : bounds.height > bounds.width
+            }
+            expectation(for: rotated, evaluatedWith: app.windows.firstMatch)
+            waitForExpectations(timeout: 10)
             let web = app.webViews.firstMatch
             let reachesBottom = NSPredicate { _, _ in
                 abs(web.frame.maxY - self.app.windows.firstMatch.frame.maxY) < 2
@@ -71,7 +80,9 @@ final class FolioUITests: XCTestCase {
             let navigation = app.webViews.buttons["Study desk"]
             XCTAssertTrue(navigation.isHittable)
             XCTAssertLessThan(navigation.frame.maxY, app.windows.firstMatch.frame.maxY - 15)
-            let image = XCTAttachment(screenshot: app.screenshot())
+            let screenshot = XCUIScreen.main.screenshot()
+            XCTAssertEqual(screenshot.image.size.width > screenshot.image.size.height, landscape)
+            let image = XCTAttachment(screenshot: screenshot)
             image.name = orientation == .portrait ? "portrait-bottom-layout" : "landscape-bottom-layout"
             image.lifetime = .keepAlways
             add(image)
