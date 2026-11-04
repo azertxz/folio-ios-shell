@@ -19,6 +19,8 @@ final class FolioUITests: XCTestCase {
         <button onclick="if(confirm('End this session and keep all recorded work?'))document.getElementById('status').textContent='Session saved'">End early</button>
         <button onclick="const name=prompt('Enter a note','Draft');if(name!==null)document.getElementById('status').textContent=name">Edit note</button>
         <button onclick="alert('Your work is saved')">Show message</button></main>
+        <button onclick="fetch('/api/status').then(r=>document.getElementById('status').textContent='PC response '+r.status).catch(()=>document.getElementById('status').textContent='Unreadable connection failure')">Check PC connection</button>
+        <button onclick="window.webkit.messageHandlers.folioNative.postMessage({action:'paper',url:'https://example.invalid/exam.pdf'});setTimeout(()=>window.webkit.messageHandlers.folioNative.postMessage({action:'break',until:Date.now()+12000}),5000)">Open paper then take break</button>
         <nav><button>Study desk</button></nav></body></html>
         """
         app.launch()
@@ -56,6 +58,25 @@ final class FolioUITests: XCTestCase {
         app.webViews.buttons["Show message"].tap()
         XCTAssertTrue(app.alerts.staticTexts["Your work is saved"].waitForExistence(timeout: 5))
         app.alerts.buttons["OK"].tap()
+        XCTAssertTrue(app.webViews.buttons["End early"].isHittable)
+    }
+
+    func testConnectionFailureIsReadableWithoutLosingTheStudyPage() {
+        app.webViews.buttons["Check PC connection"].tap()
+        XCTAssertTrue(app.webViews.staticTexts["PC response 503"].waitForExistence(timeout: 20))
+        XCTAssertTrue(app.webViews.buttons["End early"].isHittable)
+    }
+
+    func testMandatoryBreakClosesPaperAndLocksTheWholeApp() {
+        app.webViews.buttons["Open paper then take break"].tap()
+        XCTAssertTrue(app.buttons["Back to my answer"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.staticTexts["Take a five-minute break"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Back to my answer"].exists)
+        XCTAssertFalse(app.buttons["Connection"].isEnabled)
+        let finished = NSPredicate { _, _ in !self.app.staticTexts["Take a five-minute break"].exists }
+        expectation(for: finished, evaluatedWith: app)
+        waitForExpectations(timeout: 20)
+        XCTAssertTrue(app.buttons["Connection"].isEnabled)
         XCTAssertTrue(app.webViews.buttons["End early"].isHittable)
     }
 

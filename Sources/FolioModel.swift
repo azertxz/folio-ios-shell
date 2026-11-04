@@ -16,6 +16,10 @@ final class FolioModel: ObservableObject {
     @Published var address = UserDefaults.standard.string(forKey: "folioPC") ?? ""
     @Published var code = ""
     @Published var showConnection = false
+    @Published var paperURL: URL?
+    @Published var breakUntil: Date?
+    private var refreshing = false
+    private var assetBuild: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "" }
     private var server: LocalServer?
     private let manager = FileManager.default
     private var base: URL { manager.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("Folio") }
@@ -38,8 +42,31 @@ final class FolioModel: ObservableObject {
         #endif
         if let origin = validatedOrigin(address), manager.fileExists(atPath: assets.appendingPathComponent("index.html").path) {
             start(origin)
+            Task { await refreshAfterUpgrade() }
         } else {
             showConnection = true
+        }
+    }
+
+    func refreshAfterUpgrade() async {
+        guard !refreshing, !busy, ready,
+              !ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+              UserDefaults.standard.string(forKey: "folioAssetBuild") != assetBuild else { return }
+        refreshing = true
+        defer { refreshing = false }
+        await connect()
+    }
+
+    func receiveNative(_ message: [String: Any]) {
+        if message["action"] as? String == "break", let until = message["until"] as? Double,
+           until > Date().timeIntervalSince1970 * 1000 {
+            breakUntil = Date(timeIntervalSince1970: until / 1000)
+            paperURL = nil
+            showConnection = false
+        } else if message["action"] as? String == "paper", breakUntil == nil,
+                  let text = message["url"] as? String, let url = URL(string: text),
+                  url.scheme == "https", url.host != nil, url.user == nil, url.password == nil {
+            paperURL = url
         }
     }
 
@@ -137,6 +164,7 @@ final class FolioModel: ObservableObject {
                 throw error
             }
             UserDefaults.standard.set(origin.absoluteString, forKey: "folioPC")
+            UserDefaults.standard.set(assetBuild, forKey: "folioAssetBuild")
             address = origin.absoluteString
             code = ""
             status = "Connected. Your study desk is ready offline."
